@@ -1,0 +1,36 @@
+{
+  "name": "auth-service-v4",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "sam build --profile personal-dev",
+    "local": "sam build --profile personal-dev && sam local start-api",
+    "deploy:dev": "sam build --profile personal-dev && sam deploy --profile personal-dev --parameter-overrides Environment=dev",
+    "deploy:staging": "sam build --profile personal-dev && sam deploy --profile personal-dev --parameter-overrides Environment=staging",
+    "deploy:prod": "sam build --profile personal-dev && sam deploy --profile personal-dev --parameter-overrides Environment=prod"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "esbuild": "^0.25.10",
+    "jose": "^6.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.902.0",
+    "@aws-sdk/client-ssm": "^3.901.0",
+    "@aws-sdk/lib-dynamodb": "^3.902.0",
+    "@middy/core": "^6.4.5",
+    "@middy/ssm": "^6.4.5",
+    "dotenv": "^17.2.3",
+    "koa": "^3.0.1",
+    "koa-mount": "^4.2.0",
+    "oidc-provider": "^9.5.1",
+    "serverless-http": "^4.0.0"
+  }
+}

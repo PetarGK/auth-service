@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: OAuth Service with OIDC Provider using API Gateway, Lambda, and DynamoDB
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+  
+  DomainName:
+    Type: String
+    Description: Custom domain name for the API (e.g., auth.example.com)
+  
+  CertificateArn:
+    Type: String
+    Description: ACM certificate ARN for the custom domain
+
+Globals:
+  Function:
+    Timeout: 5
+    Runtime: nodejs22.x
+    MemorySize: 512
+    Architectures:
+      - arm64
+
+Resources:
+  # SSM Parameter for Private Key
+  PrivateKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${Environment}/oauth/private-key-jwk"
+      Type: String
+      Value: '{"placeholder":"update-after-deployment"}'
+      Description: Private key JWK for OAuth service JWT signing
+
+  # SSM Parameter for Initial Access Token
+  InitialAccessTokenParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${Environment}/oauth/initial-access-token"
+      Type: String
+      Value: "placeholder-update-after-deployment"
+      Description: Initial access token for OAuth client registration
+
+  # DynamoDB Table for OAuth data
+  OAuthTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-oauth-table"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: modelId
+          AttributeType: S
+        - AttributeName: uid
+          AttributeType: S
+        - AttributeName: grantId
+          AttributeType: S
+        - AttributeName: userCode
+          AttributeType: S
+      KeySchema:
+        - AttributeName: modelId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      GlobalSecondaryIndexes:
+        - IndexName: uidIndex
+          KeySchema:
+            - AttributeName: uid
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: grantIdIndex
+          KeySchema:
+            - AttributeName: grantId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: userCodeIndex
+          KeySchema:
+            - AttributeName: userCode
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  # Lambda function for OAuth service
+  OAuthFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: "es2022"
+        Format: cjs
+        Sourcemap: false
+        EntryPoints:
+          - src/lambda.ts
+    Properties:
+      FunctionName: !Sub "${Environment}-oauth-service"
+      CodeUri: ./
+      Handler: lambda.handler
+      Environment:
+        Variables:
+          OAUTH_TABLE: !Ref OAuthTable
+          APP_ENV: !Ref Environment
+          AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
+          ISSUER_URL: !Sub "https://${DomainName}"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OAuthTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:ConditionCheckItem
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:BatchWriteItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+              Resource:
+                - !GetAtt OAuthTable.Arn
+                - !Sub "${OAuthTable.Arn}/index/*"
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameters
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Environment}/oauth/private-key-jwk"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Environment}/oauth/initial-access-token"
+
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref OAuthRestApi
+
+  # REST API Gateway
+  OAuthRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Environment}-oauth-api"
+      StageName: !Ref Environment
+      MethodSettings:
+        - ThrottlingBurstLimit: 10
+          ThrottlingRateLimit: 5
+          ResourcePath: "/*"
+          HttpMethod: "*"
+      Auth:
+        ApiKeyRequired: true
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # API Key
+  OAuthApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub "${Environment}-oauth-api-key"
+      Description: API Key for OAuth service
+      Enabled: true
+
+  # Usage Plan with daily quota
+  OAuthUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub "${Environment}-oauth-usage-plan"
+      Description: Usage plan for OAuth service with daily quota
+      Quota:
+        Limit: 100
+        Period: DAY
+      Throttle:
+        RateLimit: 5
+        BurstLimit: 10
+      ApiStages:
+        - ApiId: !Ref OAuthRestApi
+          Stage: !Ref Environment
+
+  # Link API Key to Usage Plan
+  OAuthUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref OAuthApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref OAuthUsagePlan
+
+  # Custom Domain
+  OAuthDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      CertificateArn: !Ref CertificateArn
+      SecurityPolicy: TLS_1_2
+
+  # Base Path Mapping
+  OAuthBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref OAuthDomainName
+      RestApiId: !Ref OAuthRestApi
+      Stage: !Ref Environment
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${OAuthRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${Environment}-oauth-api-endpoint"
+
+  CustomDomainEndpoint:
+    Description: Custom domain endpoint URL
+    Value: !Sub "https://${DomainName}"
+    Export:
+      Name: !Sub "${Environment}-oauth-custom-domain-endpoint"
+
+  DomainNameTarget:
+    Description: CloudFront distribution domain name for DNS configuration
+    Value: !GetAtt OAuthDomainName.DistributionDomainName
+    Export:
+      Name: !Sub "${Environment}-oauth-domain-target"
+
+  ApiKeyId:
+    Description: API Key ID for accessing the OAuth service
+    Value: !Ref OAuthApiKey
+    Export:
+      Name: !Sub "${Environment}-oauth-api-key-id"
