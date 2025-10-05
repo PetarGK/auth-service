@@ -142,8 +142,8 @@ Resources:
   ApiGatewayLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/apigateway/${Environment}-oauth-api"
-      RetentionInDays: 14
+      LogGroupName: !Sub "API-Gateway-Execution-Logs_${OAuthRestApi}/${Environment}"
+      RetentionInDays: 7
 
   # REST API Gateway
   OAuthRestApi:
@@ -151,9 +151,6 @@ Resources:
     Properties:
       Name: !Sub "${Environment}-oauth-api"
       StageName: !Ref Environment
-      AccessLogSetting:
-        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
-        Format: '$requestId $ip $requestTime "$httpMethod $resourcePath $protocol" $status $responseLength $responseTime'
       MethodSettings:
         - ThrottlingBurstLimit: 5
           ThrottlingRateLimit: 2
@@ -162,44 +159,10 @@ Resources:
           LoggingLevel: INFO
           DataTraceEnabled: true
           MetricsEnabled: false
-      Auth:
-        ApiKeyRequired: true
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
-
-  # # API Key
-  # OAuthApiKey:
-  #   Type: AWS::ApiGateway::ApiKey
-  #   Properties:
-  #     Name: !Sub "${Environment}-oauth-api-key"
-  #     Description: API Key for OAuth service
-  #     Enabled: true
-
-  # # Usage Plan with daily quota
-  # OAuthUsagePlan:
-  #   Type: AWS::ApiGateway::UsagePlan
-  #   Properties:
-  #     UsagePlanName: !Sub "${Environment}-oauth-usage-plan"
-  #     Description: Usage plan for OAuth service with daily quota
-  #     Quota:
-  #       Limit: 100
-  #       Period: DAY
-  #     Throttle:
-  #       RateLimit: 5
-  #       BurstLimit: 10
-  #     ApiStages:
-  #       - ApiId: !Ref OAuthRestApi
-  #         Stage: !Ref Environment
-
-  # # Link API Key to Usage Plan
-  # OAuthUsagePlanKey:
-  #   Type: AWS::ApiGateway::UsagePlanKey
-  #   Properties:
-  #     KeyId: !Ref OAuthApiKey
-  #     KeyType: API_KEY
-  #     UsagePlanId: !Ref OAuthUsagePlan
 
   # Custom Domain
   OAuthDomainName:
@@ -234,9 +197,3 @@ Outputs:
     Value: !GetAtt OAuthDomainName.DistributionDomainName
     Export:
       Name: !Sub "${Environment}-oauth-domain-target"
-
-  # ApiKeyId:
-  #   Description: API Key ID for accessing the OAuth service
-  #   Value: !Ref OAuthApiKey
-  #   Export:
-  #     Name: !Sub "${Environment}-oauth-api-key-id"
