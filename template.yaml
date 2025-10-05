@@ -138,17 +138,30 @@ Resources:
             Method: ANY
             RestApiId: !Ref OAuthRestApi
 
+  # CloudWatch Log Group for API Gateway
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/${Environment}-oauth-api"
+      RetentionInDays: 14
+
   # REST API Gateway
   OAuthRestApi:
     Type: AWS::Serverless::Api
     Properties:
       Name: !Sub "${Environment}-oauth-api"
       StageName: !Ref Environment
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
+        Format: '$requestId $ip $requestTime "$httpMethod $resourcePath $protocol" $status $responseLength $responseTime'
       MethodSettings:
         - ThrottlingBurstLimit: 5
           ThrottlingRateLimit: 2
           ResourcePath: "/*"
           HttpMethod: "*"
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: false
       Auth:
         ApiKeyRequired: true
       Cors:
@@ -156,13 +169,13 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
 
-  # API Key
-  OAuthApiKey:
-    Type: AWS::ApiGateway::ApiKey
-    Properties:
-      Name: !Sub "${Environment}-oauth-api-key"
-      Description: API Key for OAuth service
-      Enabled: true
+  # # API Key
+  # OAuthApiKey:
+  #   Type: AWS::ApiGateway::ApiKey
+  #   Properties:
+  #     Name: !Sub "${Environment}-oauth-api-key"
+  #     Description: API Key for OAuth service
+  #     Enabled: true
 
   # # Usage Plan with daily quota
   # OAuthUsagePlan:
