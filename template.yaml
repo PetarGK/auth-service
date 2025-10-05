@@ -8,11 +8,11 @@ Parameters:
     Default: dev
     AllowedValues: [dev, staging, prod]
     Description: Environment name
-  
+
   DomainName:
     Type: String
     Description: Custom domain name for the API (e.g., auth.example.com)
-  
+
   CertificateArn:
     Type: String
     Description: ACM certificate ARN for the custom domain
@@ -145,8 +145,8 @@ Resources:
       Name: !Sub "${Environment}-oauth-api"
       StageName: !Ref Environment
       MethodSettings:
-        - ThrottlingBurstLimit: 10
-          ThrottlingRateLimit: 5
+        - ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
           ResourcePath: "/*"
           HttpMethod: "*"
       Auth:
@@ -164,29 +164,29 @@ Resources:
       Description: API Key for OAuth service
       Enabled: true
 
-  # Usage Plan with daily quota
-  OAuthUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
-    Properties:
-      UsagePlanName: !Sub "${Environment}-oauth-usage-plan"
-      Description: Usage plan for OAuth service with daily quota
-      Quota:
-        Limit: 100
-        Period: DAY
-      Throttle:
-        RateLimit: 5
-        BurstLimit: 10
-      ApiStages:
-        - ApiId: !Ref OAuthRestApi
-          Stage: !Ref Environment
+  # # Usage Plan with daily quota
+  # OAuthUsagePlan:
+  #   Type: AWS::ApiGateway::UsagePlan
+  #   Properties:
+  #     UsagePlanName: !Sub "${Environment}-oauth-usage-plan"
+  #     Description: Usage plan for OAuth service with daily quota
+  #     Quota:
+  #       Limit: 100
+  #       Period: DAY
+  #     Throttle:
+  #       RateLimit: 5
+  #       BurstLimit: 10
+  #     ApiStages:
+  #       - ApiId: !Ref OAuthRestApi
+  #         Stage: !Ref Environment
 
-  # Link API Key to Usage Plan
-  OAuthUsagePlanKey:
-    Type: AWS::ApiGateway::UsagePlanKey
-    Properties:
-      KeyId: !Ref OAuthApiKey
-      KeyType: API_KEY
-      UsagePlanId: !Ref OAuthUsagePlan
+  # # Link API Key to Usage Plan
+  # OAuthUsagePlanKey:
+  #   Type: AWS::ApiGateway::UsagePlanKey
+  #   Properties:
+  #     KeyId: !Ref OAuthApiKey
+  #     KeyType: API_KEY
+  #     UsagePlanId: !Ref OAuthUsagePlan
 
   # Custom Domain
   OAuthDomainName:
@@ -222,8 +222,8 @@ Outputs:
     Export:
       Name: !Sub "${Environment}-oauth-domain-target"
 
-  ApiKeyId:
-    Description: API Key ID for accessing the OAuth service
-    Value: !Ref OAuthApiKey
-    Export:
-      Name: !Sub "${Environment}-oauth-api-key-id"
+  # ApiKeyId:
+  #   Description: API Key ID for accessing the OAuth service
+  #   Value: !Ref OAuthApiKey
+  #   Export:
+  #     Name: !Sub "${Environment}-oauth-api-key-id"
