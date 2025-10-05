@@ -4,11 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "sam build --profile personal-dev",
-    "local": "sam build --profile personal-dev && sam local start-api",
-    "deploy:dev": "sam build --profile personal-dev && sam deploy --profile personal-dev --parameter-overrides Environment=dev",
-    "deploy:staging": "sam build --profile personal-dev && sam deploy --profile personal-dev --parameter-overrides Environment=staging",
-    "deploy:prod": "sam build --profile personal-dev && sam deploy --profile personal-dev --parameter-overrides Environment=prod"
+    "build": "sam build --profile personal-dev"
   },
   "keywords": [],
   "author": "",
