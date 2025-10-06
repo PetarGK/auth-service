@@ -29,19 +29,19 @@ export const getConfiguration = (
       revocation: { enabled: true },
       devInteractions: { enabled: true },
       resourceIndicators: {
-        enabled: false,
-        // async getResourceServerInfo(ctx, resourceIndicator) {
-        //   if (resourceIndicator === "alabala:123") {
-        //     return {
-        //       scope: "api:read api:write",
-        //       audience: resourceIndicator,
-        //       accessTokenFormat: "jwt",
-        //       accessTokenTTL: 15 * 60,
-        //       jwt: { alg: "RS256" },
-        //     };
-        //   }
-        //   throw new errors.InvalidTarget();
-        // },
+        enabled: true,
+        async getResourceServerInfo(ctx, resourceIndicator) {
+          if (resourceIndicator === "customer-support:version1") {
+            return {
+              scope: "api:read api:write",
+              audience: resourceIndicator,
+              accessTokenFormat: "jwt",
+              accessTokenTTL: 15 * 60,
+              jwt: { alg: "RS256" },
+            };
+          }
+          throw new errors.InvalidTarget();
+        },
       },
       registration: {
         enabled: true,

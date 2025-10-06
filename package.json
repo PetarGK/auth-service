@@ -5,7 +5,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "sam build",
-    "deploy:dev": "sam build && sam deploy --config-file samconfig.toml"
+    "deploy": "sam build && sam deploy --config-file samconfig.toml"
   },
   "keywords": [],
   "author": "",
