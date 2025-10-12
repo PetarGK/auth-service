@@ -21,7 +21,7 @@ Globals:
   Function:
     Timeout: 5
     Runtime: nodejs22.x
-    MemorySize: 512
+    MemorySize: 1024
     Architectures:
       - arm64
 
@@ -91,10 +91,10 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
-        Minify: false
+        Minify: true
         Target: "es2022"
         Format: cjs
-        Sourcemap: false
+        Sourcemap: true
         EntryPoints:
           - src/lambda.ts
     Properties:
