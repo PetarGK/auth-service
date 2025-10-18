@@ -32,7 +32,7 @@ const baseHandler = async (event: any, context: any) => {
     console.log("Creating OIDC provider with issuer:", issuerUrl);
     const provider = oidc(issuerUrl, configuration);
 
-    app.use(mount(provider.app));
+    app.use(mount(provider));
     serverlessApp = serverless(app);
     console.log("Serverless app initialized successfully");
   }
