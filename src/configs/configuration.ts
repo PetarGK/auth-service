@@ -1,5 +1,6 @@
 import { Configuration, errors } from "oidc-provider";
 import { DynamoDBAdapter } from "../adapters/dynamodb";
+import { ResourceIndicatorsAdapter } from "../adapters/resource-indicators";
 
 export const getConfiguration = (
   privateKeyJwk?: string | object,
@@ -9,6 +10,8 @@ export const getConfiguration = (
     typeof privateKeyJwk === "object"
       ? privateKeyJwk
       : JSON.parse(privateKeyJwk || process.env.PRIVATE_KEY_JWK || "{}");
+
+  const resourceAdapter = new ResourceIndicatorsAdapter();
 
   return {
     adapter: process.env.APP_ENV === "local" ? undefined : DynamoDBAdapter,
@@ -31,16 +34,7 @@ export const getConfiguration = (
       resourceIndicators: {
         enabled: true,
         async getResourceServerInfo(ctx, resourceIndicator) {
-          if (resourceIndicator === "customer-support:version1") {
-            return {
-              scope: "api:read api:write",
-              audience: resourceIndicator,
-              accessTokenFormat: "jwt",
-              accessTokenTTL: 15 * 60,
-              jwt: { alg: "RS256" },
-            };
-          }
-          throw new errors.InvalidTarget();
+          return await resourceAdapter.getResourceServerInfo(ctx.oidc.client!.clientId, resourceIndicator);
         },
       },
       registration: {

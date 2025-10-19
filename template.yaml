@@ -6,7 +6,7 @@ Parameters:
   Environment:
     Type: String
     Default: dev
-    AllowedValues: [dev, staging, prod]
+    AllowedValues: [dev, prod]
     Description: Environment name
 
   DomainName:
@@ -85,6 +85,19 @@ Resources:
           Projection:
             ProjectionType: ALL
 
+  # DynamoDB Table for Resource Indicators
+  ResourcesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Environment}-oauth-resources"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: resourceId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resourceId
+          KeyType: HASH
+
   # Lambda function for OAuth service
   OAuthFunction:
     Type: AWS::Serverless::Function
@@ -104,6 +117,7 @@ Resources:
       Environment:
         Variables:
           OAUTH_TABLE: !Ref OAuthTable
+          RESOURCES_TABLE: !Ref ResourcesTable
           APP_ENV: !Ref Environment
           AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
           ISSUER_URL: !Sub "https://${DomainName}"
@@ -122,6 +136,12 @@ Resources:
               Resource:
                 - !GetAtt OAuthTable.Arn
                 - !Sub "${OAuthTable.Arn}/index/*"
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                - !GetAtt ResourcesTable.Arn
         - Statement:
             - Effect: Allow
               Action:

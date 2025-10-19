@@ -2,18 +2,19 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
     branches: [main]
+    types: [closed]
 
 env:
   SAM_CLI_TELEMETRY: 0
 
 jobs:
-  build-and-deploy-dev:
-    if: github.ref == 'refs/heads/develop'
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: development
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
+    environment: ${{ (github.event.pull_request.merged == true) && 'production' || 'development' }}
     permissions:
       id-token: write
       contents: read
@@ -46,7 +47,7 @@ jobs:
       - name: Build SAM application
         run: sam build
 
-      - name: Deploy to Development
+      - name: Deploy
         run: |
           sam deploy \
             --stack-name oauth-service \
@@ -57,6 +58,6 @@ jobs:
             --no-fail-on-empty-changeset \
             --resolve-s3 \
             --parameter-overrides \
-              Environment=dev \
+              Environment=${{ (github.event.pull_request.merged == true) && 'prod' || 'dev' }} \
               DomainName=${{ secrets.DOMAIN_NAME }} \
               CertificateArn=${{ secrets.CERTIFICATE_ARN }}
